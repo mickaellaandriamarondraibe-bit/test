@@ -1,0 +1,9 @@
+| Dossier       | Rôle                                                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `model/`      | Contient les classes métier simples : `Article`, `Mouvement`, `Methode`, `TypeMouvement`.                                     |
+| `dao/`        | Contient les requêtes SQL/JDBC : insertion, recherche, modification, suppression. Exemple : `ArticleDao`, `MouvementDao`.     |
+| `service/`    | Contient la logique métier : calcul du stock, calcul du CUMP, validation entrée/sortie. Exemple : `StockService`.             |
+| `controller/` | Fait le lien entre l’interface et le service. Il reçoit les actions utilisateur puis appelle les services.                    |
+| `view/`       | Contient l’interface graphique si tu fais Java Swing : fenêtres, formulaires, tableaux. Exemple : `StockView`, `ArticleForm`. |
+| `util/`       | Contient les outils réutilisables : connexion PostgreSQL, formatage date, constantes. Exemple : `DatabaseConnection`.         |
+| `Main.java`   | Point d’entrée du programme. C’est là que tu démarres l’application.                                                          |
