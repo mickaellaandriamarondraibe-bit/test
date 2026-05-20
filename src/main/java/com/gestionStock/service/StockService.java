@@ -55,61 +55,70 @@ public class StockService {
         return mouvementDao.save(mouvement);
     }
 
-    
     public Mouvement enregistrerSortie(
-            Article article,
-            Methode methode,
-            LocalDate date,
-            BigDecimal qte
-    ) throws Exception {
+        Article article,
+        Methode methode,
+        LocalDate date,
+        BigDecimal qte
+) throws Exception {
 
-        Mouvement dernier = getDernierMouvement(article);
+    Mouvement dernier = getDernierMouvement(article);
 
-        if (dernier == null) {
-            throw new IllegalArgumentException("Aucun stock disponible pour cet article.");
-        }
-
-        BigDecimal ancienStock = dernier.getStockApres();
-        BigDecimal ancienneValeurStock = dernier.getValeurStockApres();
-        BigDecimal dernierCump = dernier.getCumpApres();
-
-        if (qte.compareTo(ancienStock) > 0) {
-            throw new IllegalArgumentException("Stock insuffisant.");
-        }
-
-        BigDecimal pu;
-        BigDecimal valeur;
-
-        String libelleMethode = methode.getLibelle() == null ? "" : methode.getLibelle().trim().toUpperCase();
-        if ("FIFO".equals(libelleMethode)) {
-            valeur = methode(article.getId(), qte, true);
-            pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
-        } else if ("LIFO".equals(libelleMethode)) {
-            valeur = methode(article.getId(), qte, false);
-            pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
-        } else {
-            pu = dernierCump;
-            valeur = qte.multiply(pu);
-        }
-
-        BigDecimal stockApres = ancienStock.subtract(qte);
-        BigDecimal valeurStockApres = ancienneValeurStock.subtract(valeur);
-
-        Mouvement mouvement = new Mouvement();
-        mouvement.setArticleId(article.getId());
-        mouvement.setMethodeId(methode.getId());
-        mouvement.setDateMouvement(date);
-        mouvement.setTypeMouvement(TypeMouvement.SORTIE);
-        mouvement.setQte(qte);
-        mouvement.setPu(pu);
-        mouvement.setValeur(valeur);
-        mouvement.setStockApres(stockApres);
-        mouvement.setValeurStockApres(valeurStockApres);
-        mouvement.setCumpApres(dernierCump);
-
-        return mouvementDao.save(mouvement);
+    if (dernier == null) {
+        throw new IllegalArgumentException("Aucun stock disponible pour cet article.");
     }
 
+    BigDecimal ancienStock = dernier.getStockApres();
+    BigDecimal ancienneValeurStock = dernier.getValeurStockApres();
+    BigDecimal dernierCump = dernier.getCumpApres();
+
+    if (qte.compareTo(ancienStock) > 0) {
+        throw new IllegalArgumentException("Stock insuffisant.");
+    }
+
+    BigDecimal pu;
+    BigDecimal valeur;
+
+    String libelleMethode = methode.getLibelle() == null? "": methode.getLibelle().trim().toUpperCase();
+
+    if ("FIFO".equals(libelleMethode)) {
+        valeur = methode(article.getId(), qte, true);
+        pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
+    } else if ("LIFO".equals(libelleMethode)) {
+        valeur = methode(article.getId(), qte, false);
+        pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
+    } else {
+        pu = dernierCump;
+        valeur = qte.multiply(pu);
+    }
+
+    BigDecimal stockApres = ancienStock.subtract(qte);
+    BigDecimal valeurStockApres = ancienneValeurStock.subtract(valeur);
+
+    BigDecimal cumpApres;
+
+    if ("CUMP".equals(libelleMethode)) {
+        cumpApres = dernierCump;
+    } else {
+        cumpApres = stockApres.compareTo(BigDecimal.ZERO) == 0
+                ? BigDecimal.ZERO
+                : valeurStockApres.divide(stockApres, 2, RoundingMode.HALF_UP);
+    }
+
+    Mouvement mouvement = new Mouvement();
+    mouvement.setArticleId(article.getId());
+    mouvement.setMethodeId(methode.getId());
+    mouvement.setDateMouvement(date);
+    mouvement.setTypeMouvement(TypeMouvement.SORTIE);
+    mouvement.setQte(qte);
+    mouvement.setPu(pu);
+    mouvement.setValeur(valeur);
+    mouvement.setStockApres(stockApres);
+    mouvement.setValeurStockApres(valeurStockApres);
+    mouvement.setCumpApres(cumpApres);
+
+    return mouvementDao.save(mouvement);
+}
     private Mouvement getDernierMouvement(Article article) throws Exception {
         List<Mouvement> mouvements = mouvementDao.findAll();
 
