@@ -17,13 +17,18 @@ import java.util.Map;
 public class StockService {
 
     private final GenericDao<Mouvement> mouvementDao;
+    private final GenericDao<Methode> methodeDao;
 
     public StockService() {
         this.mouvementDao = new GenericDao<>(Mouvement.class);
+        this.methodeDao = new GenericDao<>(Methode.class);
     }
 
-    public Mouvement enregistrerEntree( Article article, Methode methode, LocalDate date, BigDecimal qte, BigDecimal pu
+    public Mouvement enregistrerEntree(Article article, LocalDate date, BigDecimal qte, BigDecimal pu
     ) throws Exception {
+        if (article.getMethodeId() == null) {
+            throw new IllegalArgumentException("Aucune methode definie pour cet article.");
+        }
 
         Mouvement dernier = getDernierMouvement(article);
 
@@ -42,7 +47,7 @@ public class StockService {
 
         Mouvement mouvement = new Mouvement();
         mouvement.setArticleId(article.getId());
-        mouvement.setMethodeId(methode.getId());
+        mouvement.setMethodeId(article.getMethodeId());
         mouvement.setDateMouvement(date);
         mouvement.setTypeMouvement(TypeMouvement.ENTREE);
         mouvement.setQte(qte);
@@ -57,7 +62,6 @@ public class StockService {
 
     public Mouvement enregistrerSortie(
         Article article,
-        Methode methode,
         LocalDate date,
         BigDecimal qte
 ) throws Exception {
@@ -79,18 +83,28 @@ public class StockService {
     BigDecimal pu;
     BigDecimal valeur;
 
-    String libelleMethode = methode.getLibelle() == null? "": methode.getLibelle().trim().toUpperCase();
-
-    if ("FIFO".equals(libelleMethode)) {
-        valeur = methode(article.getId(), qte, true);
-        pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
-    } else if ("LIFO".equals(libelleMethode)) {
-        valeur = methode(article.getId(), qte, false);
-        pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
-    } else {
-        pu = dernierCump;
-        valeur = qte.multiply(pu);
+    Long methode = article.getMethodeId();
+    if (methode == null) {
+        throw new IllegalArgumentException("Aucune methode definie pour cet article.");
     }
+    Methode methodeEntity = methodeDao.findById(methode);
+    if (methodeEntity == null) {
+        throw new IllegalArgumentException("Methode introuvable pour cet article.");
+    }
+    String libelleMethode = methodeEntity.getLibelle();
+    
+            if ("FIFO".equals(libelleMethode)) {
+                    valeur = methode(article.getId(), qte, true);
+                    pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
+            } 
+            else if ("LIFO".equals(libelleMethode)) {
+                    valeur = methode(article.getId(), qte, false);
+                    pu = valeur.divide(qte, 2, RoundingMode.HALF_UP);
+            } 
+            else {
+                    pu = dernierCump;
+                    valeur = qte.multiply(pu);
+            }
 
     BigDecimal stockApres = ancienStock.subtract(qte);
     BigDecimal valeurStockApres = ancienneValeurStock.subtract(valeur);
@@ -107,7 +121,7 @@ public class StockService {
 
     Mouvement mouvement = new Mouvement();
     mouvement.setArticleId(article.getId());
-    mouvement.setMethodeId(methode.getId());
+    mouvement.setMethodeId(methode);
     mouvement.setDateMouvement(date);
     mouvement.setTypeMouvement(TypeMouvement.SORTIE);
     mouvement.setQte(qte);
@@ -119,6 +133,9 @@ public class StockService {
 
     return mouvementDao.save(mouvement);
 }
+
+
+
     private Mouvement getDernierMouvement(Article article) throws Exception {
         List<Mouvement> mouvements = mouvementDao.findAll();
 

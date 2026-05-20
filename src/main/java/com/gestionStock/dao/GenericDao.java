@@ -105,7 +105,7 @@ public class GenericDao<T> {
         String sql = "UPDATE " + tableName + " SET " + setPart + " WHERE id = ?";
 
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+            PreparedStatement ps = con.prepareStatement(sql)) {
 
             setPreparedStatementValues(ps, fields, entity);
             ps.setLong(fields.size() + 1, getId(entity));
@@ -209,17 +209,7 @@ public class GenericDao<T> {
         return rs.getObject(columnName);
     }
 
-    private Long getId(T entity) throws Exception {
-        Field field = clazz.getDeclaredField("id");
-        field.setAccessible(true);
-        return (Long) field.get(entity);
-    }
-
-    private void setId(T entity, Long id) throws Exception {
-        Field field = clazz.getDeclaredField("id");
-        field.setAccessible(true);
-        field.set(entity, id);
-    }
+  
     
 
     public T getPlusAncienArticle(Long articleId, List<Long> excludedIds) throws Exception {
@@ -229,7 +219,7 @@ public class GenericDao<T> {
                 " ORDER BY date_mouvement ASC, id ASC LIMIT 1";
 
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+            PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setLong(1, articleId);
             ps.setArray(2, toBigIntArray(con, excludedIds));
@@ -251,7 +241,7 @@ public class GenericDao<T> {
                 " ORDER BY date_mouvement DESC, id DESC LIMIT 1";
 
         try (Connection con = DatabaseConnection.getConnection();
-             PreparedStatement ps = con.prepareStatement(sql)) {
+            PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setLong(1, articleId);
             ps.setArray(2, toBigIntArray(con, excludedIds));
@@ -269,5 +259,18 @@ public class GenericDao<T> {
     private Array toBigIntArray(Connection con, List<Long> values) throws SQLException {
         List<Long> safeValues = values == null ? List.of() : values;
         return con.createArrayOf("bigint", safeValues.toArray());
+    }
+
+
+    private Long getId(T entity) throws Exception {
+        Field field = clazz.getDeclaredField("id");
+        field.setAccessible(true);
+        return (Long) field.get(entity);
+    }
+
+    private void setId(T entity, Long id) throws Exception {
+        Field field = clazz.getDeclaredField("id");
+        field.setAccessible(true);
+        field.set(entity, id);
     }
 }

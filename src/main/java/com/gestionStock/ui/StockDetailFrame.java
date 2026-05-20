@@ -1,7 +1,7 @@
 package com.gestionStock.ui;
 
 import com.gestionStock.dao.GenericDao;
-import com.gestionStock.dto.LigneStockDetailDto;
+import com.gestionStock.dto.LigneStockResteDto;
 import com.gestionStock.model.Article;
 import com.gestionStock.service.EtatStockService;
 import com.gestionStock.ui.generic.FabriqueBouton;
@@ -81,9 +81,9 @@ public class StockDetailFrame extends JFrame {
             }
 
             LocalDate dateLimite = LocalDate.parse(champDate.getText().trim());
-            List<LigneStockDetailDto> lignes = etatStockService.getStockDetailLignesByDate(article.getId(), dateLimite);
+            List<LigneStockResteDto> lignes = etatStockService.getStockDetailLignesByDate(article.getId(), dateLimite);
 
-            JTable tableau = FabriqueTableau.creerDepuisDonneesEtGetters(lignes, LigneStockDetailDto.class
+            JTable tableau = FabriqueTableau.creerDepuisDonneesEtGetters(lignes, LigneStockResteDto.class
             );
 
             panneauTableau.removeAll();

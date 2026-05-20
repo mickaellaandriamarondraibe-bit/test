@@ -2,7 +2,6 @@ package com.gestionStock.ui;
 
 import com.gestionStock.dao.GenericDao;
 import com.gestionStock.model.Article;
-import com.gestionStock.model.Methode;
 import com.gestionStock.model.Mouvement;
 import com.gestionStock.model.TypeMouvement;
 import com.gestionStock.service.StockService;
@@ -25,12 +24,10 @@ import java.time.LocalDate;
 public class MouvementFrame extends JFrame {
 
     private final GenericDao<Article> articleDao;
-    private final GenericDao<Methode> methodeDao;
 
     private final StockService stockService;
 
-    private final JComboBox<Article> choixArticle;
-    private final JComboBox<Methode> choixMethode;
+    private final JComboBox<Article> choixArticle = new JComboBox<Article>();
     private final JComboBox<TypeMouvement> choixType;
 
     private final JTextField champDate;
@@ -41,7 +38,6 @@ public class MouvementFrame extends JFrame {
 
     public MouvementFrame() {
         articleDao = new GenericDao<>(Article.class);
-        methodeDao = new GenericDao<>(Methode.class);
         stockService = new StockService();
 
         setTitle("Saisie Mouvement");
@@ -52,8 +48,6 @@ public class MouvementFrame extends JFrame {
         JPanel panneauFormulaire = new JPanel();
         panneauFormulaire.setLayout(new BoxLayout(panneauFormulaire, BoxLayout.X_AXIS));
 
-        choixArticle = new JComboBox<>();
-        choixMethode = new JComboBox<>();
         choixType = new JComboBox<>(TypeMouvement.values());
 
         champDate = new JTextField(10);
@@ -65,8 +59,6 @@ public class MouvementFrame extends JFrame {
 
         panneauFormulaire.add(new JLabel("Produit: "));
         panneauFormulaire.add(choixArticle);
-        panneauFormulaire.add(new JLabel("  Methode: "));
-        panneauFormulaire.add(choixMethode);
         panneauFormulaire.add(new JLabel("  Type: "));
         panneauFormulaire.add(choixType);
         panneauFormulaire.add(new JLabel("  Date (YYYY-MM-DD): "));
@@ -94,10 +86,6 @@ public class MouvementFrame extends JFrame {
                 choixArticle.addItem(article);
             }
 
-            choixMethode.removeAllItems();
-            for (Methode methode : methodeDao.findAll()) {
-                choixMethode.addItem(methode);
-            }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
@@ -117,11 +105,10 @@ public class MouvementFrame extends JFrame {
     private void enregistrerMouvement() {
         try {
             Article article = (Article) choixArticle.getSelectedItem();
-            Methode methode = (Methode) choixMethode.getSelectedItem();
             TypeMouvement type = (TypeMouvement) choixType.getSelectedItem();
 
-            if (article == null || methode == null || type == null) {
-                JOptionPane.showMessageDialog(this, "Article, methode et type sont obligatoires.");
+            if (article == null || type == null) {
+                JOptionPane.showMessageDialog(this, "Article et type sont obligatoires.");
                 return;
             }
 
@@ -130,9 +117,9 @@ public class MouvementFrame extends JFrame {
 
             if (type == TypeMouvement.ENTREE) {
                 BigDecimal pu = new BigDecimal(champPu.getText().trim());
-                stockService.enregistrerEntree(article, methode, date, qte, pu);
+                stockService.enregistrerEntree(article, date, qte, pu);
             } else {
-                stockService.enregistrerSortie(article, methode, date, qte);
+                stockService.enregistrerSortie(article,date, qte);
             }
 
             champQte.setText("");

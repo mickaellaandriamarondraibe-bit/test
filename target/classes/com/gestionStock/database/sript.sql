@@ -6,14 +6,15 @@ DROP TYPE IF EXISTS type_mouvement CASCADE;
 
 CREATE TYPE type_mouvement AS ENUM ('ENTREE', 'SORTIE');
 
-CREATE TABLE article (
-    id BIGSERIAL PRIMARY KEY,
-    libelle VARCHAR(255) NOT NULL
-);
-
 CREATE TABLE methode (
     id BIGSERIAL PRIMARY KEY,
     libelle VARCHAR(50) NOT NULL UNIQUE
+);
+
+CREATE TABLE article (
+    id BIGSERIAL PRIMARY KEY,
+    libelle VARCHAR(255) NOT NULL,
+    methode_id BIGINT NOT NULL REFERENCES methode(id)
 );
 
 CREATE TABLE mouvement (
@@ -50,10 +51,10 @@ INSERT INTO methode(libelle) VALUES
 ('LIFO'),
 ('CUMP');
 
-INSERT INTO article(libelle) VALUES
-('yaourt');
+INSERT INTO article(libelle, methode_id) VALUES
+('yaourt', 1);
 
--- Exemple FIFO/LIFO/CUMP
+-- Exemple avec methode fixe par article (FIFO ici)
 -- Entrée 1 : 5 à 100
 INSERT INTO mouvement (
     article_id, methode_id, date_mouvement, type_mouvement,
@@ -81,13 +82,13 @@ INSERT INTO mouvement (
     5, 95, 475, 20, 2075, 103.75
 );
 
--- Sortie LIFO : 13
+-- Sortie FIFO : 13
 -- 5 à 95 + 8 à 110 = 1355
 INSERT INTO mouvement (
     article_id, methode_id, date_mouvement, type_mouvement,
     qte, pu, valeur, stock_apres, valeur_stock_apres, cump_apres
 ) VALUES (
-    1, 2, '2026-05-22', 'SORTIE',
+    1, 1, '2026-05-22', 'SORTIE',
     13, 104.23, 1355, 7, 720, 102.86
 );
 
@@ -101,3 +102,16 @@ INSERT INTO mouvement_source (
 ) VALUES
 (4, 3, 5, 95, 475),
 (4, 2, 8, 110, 880);
+
+
+
+ALTER TABLE mouvement_source DROP CONSTRAINT mouvement_source_mouvement_sortie_id_fkey;
+ALTER TABLE mouvement_source DROP CONSTRAINT mouvement_source_mouvement_entree_id_fkey;
+
+ALTER TABLE mouvement_source
+  ADD CONSTRAINT mouvement_source_mouvement_sortie_id_fkey
+  FOREIGN KEY (mouvement_sortie_id) REFERENCES mouvement(id) ON DELETE CASCADE;
+
+ALTER TABLE mouvement_source
+  ADD CONSTRAINT mouvement_source_mouvement_entree_id_fkey
+  FOREIGN KEY (mouvement_entree_id) REFERENCES mouvement(id) ON DELETE CASCADE;

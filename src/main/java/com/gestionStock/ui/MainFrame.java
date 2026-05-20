@@ -9,7 +9,7 @@ import java.awt.GridLayout;
 public class MainFrame extends JFrame {
 
     public MainFrame() {
-        setTitle("Gestion de Stock");
+        setTitle("Gestion de Stock ETU4346");
         setSize(520, 220);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);

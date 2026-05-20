@@ -1,13 +1,15 @@
 package com.gestionStock.service;
 
 import com.gestionStock.dao.GenericDao;
-import com.gestionStock.dto.LigneStockDetailDto;
 import com.gestionStock.dto.LigneStockGlobalDto;
+import com.gestionStock.dto.LigneStockResteDto;
 import com.gestionStock.model.Article;
 import com.gestionStock.model.Methode;
 import com.gestionStock.model.Mouvement;
 import com.gestionStock.model.MouvementSource;
+import com.gestionStock.model.TypeMouvement;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -74,9 +76,33 @@ public class EtatStockService {
         return result;
     }
 
-    public List<LigneStockDetailDto> getStockDetailLignesByDate(Long articleId, LocalDate dateLimite) throws Exception {
+    public List<LigneStockResteDto> getStockDetailLignesByDate(Long articleId, LocalDate dateLimite) throws Exception {
         List<Mouvement> mouvements = getStockDetailByDate(articleId, dateLimite);
         mouvements.sort(Comparator.comparing(Mouvement::getDateMouvement).thenComparing(Mouvement::getId));
+
+        Article article = articleDao.findById(articleId);
+        String libelleMethode = "";
+        if (article != null && article.getMethodeId() != null) {
+            Methode methode = methodeDao.findById(article.getMethodeId());
+            if (methode != null && methode.getLibelle() != null) {
+                libelleMethode = methode.getLibelle().trim().toUpperCase();
+            }
+        }
+
+        List<Mouvement> entrees = new ArrayList<>();
+        List<Mouvement> sorties = new ArrayList<>();
+        for (Mouvement mouvement : mouvements) {
+            if (mouvement.getTypeMouvement() == TypeMouvement.ENTREE) {
+                entrees.add(mouvement);
+            } else {
+                sorties.add(mouvement);
+            }
+        }
+
+        Map<Long, BigDecimal> restantParEntree = new HashMap<>();
+        for (Mouvement entree : entrees) {
+            restantParEntree.put(entree.getId(), entree.getQte());
+        }
 
         Map<Long, List<MouvementSource>> sourcesParSortieId = new HashMap<>();
         for (MouvementSource source : mouvementSourceDao.findAll()) {
@@ -84,10 +110,26 @@ public class EtatStockService {
             sourcesParSortieId.computeIfAbsent(sortieId, k -> new ArrayList<>()).add(source);
         }
 
-        List<LigneStockDetailDto> lignes = new ArrayList<>();
-        for (Mouvement mouvement : mouvements) {
-            lignes.add(new LigneStockDetailDto(mouvement, formaterSources(mouvement, sourcesParSortieId)));
+        for (Mouvement sortie : sorties) {
+            List<MouvementSource> sources = sourcesParSortieId.get(sortie.getId());
+            if (sources != null && !sources.isEmpty()) {
+                for (MouvementSource source : sources) {
+                    BigDecimal restant = restantParEntree.getOrDefault(source.getMouvementEntreeId(), BigDecimal.ZERO);
+                    restantParEntree.put(source.getMouvementEntreeId(), restant.subtract(source.getQteUtilisee()));
+                }
+                continue;
+            }
+            consommerSansSources(sortie.getQte(), entrees, restantParEntree, libelleMethode);
         }
+
+        List<LigneStockResteDto> lignes = new ArrayList<>();
+        for (Mouvement entree : entrees) {
+            BigDecimal restant = restantParEntree.getOrDefault(entree.getId(), BigDecimal.ZERO);
+            if (restant.compareTo(BigDecimal.ZERO) > 0) {
+                lignes.add(new LigneStockResteDto(entree.getDateMouvement(), restant, entree.getPu()));
+            }
+        }
+        lignes.sort(Comparator.comparing(LigneStockResteDto::getDateEntree));
         return lignes;
     }
 
@@ -119,22 +161,32 @@ public class EtatStockService {
         return lignes;
     }
 
-    private String formaterSources(Mouvement mouvement, Map<Long, List<MouvementSource>> sourcesParSortieId) {
-        List<MouvementSource> sources = sourcesParSortieId.get(mouvement.getId());
-        if (sources == null || sources.isEmpty()) {
-            return "-";
+    private void consommerSansSources(
+            BigDecimal qteSortie,
+            List<Mouvement> entrees,
+            Map<Long, BigDecimal> restantParEntree,
+            String libelleMethode
+    ) {
+        List<Mouvement> ordre = new ArrayList<>(entrees);
+        if ("LIFO".equals(libelleMethode)) {
+            ordre.sort(Comparator.comparing(Mouvement::getDateMouvement).thenComparing(Mouvement::getId).reversed());
+        } else {
+            ordre.sort(Comparator.comparing(Mouvement::getDateMouvement).thenComparing(Mouvement::getId));
         }
-        StringBuilder texte = new StringBuilder();
-        for (int i = 0; i < sources.size(); i++) {
-            MouvementSource source = sources.get(i);
-            if (i > 0) {
-                texte.append(" | ");
+
+        BigDecimal resteASoustraire = qteSortie;
+        for (Mouvement entree : ordre) {
+            if (resteASoustraire.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
             }
-            texte.append("entree ")
-                    .append(source.getMouvementEntreeId())
-                    .append(": qte ")
-                    .append(source.getQteUtilisee());
+            BigDecimal restant = restantParEntree.getOrDefault(entree.getId(), BigDecimal.ZERO);
+            if (restant.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            BigDecimal consommee = restant.min(resteASoustraire);
+            restantParEntree.put(entree.getId(), restant.subtract(consommee));
+            resteASoustraire = resteASoustraire.subtract(consommee);
         }
-        return texte.toString();
     }
 }
